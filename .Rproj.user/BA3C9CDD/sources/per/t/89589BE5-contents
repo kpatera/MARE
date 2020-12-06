@@ -1,0 +1,291 @@
+# To do #
+# Translate figures to ggplot. 2/83 - 0/5 - 0/5
+
+# Load packages, data, parameters, slider names and so. ####
+# Load packages #
+library(readxl)
+require(gamlss)
+require(gamlss.dist)
+require(gamlss.demo)
+library(shiny)
+library(ggplot2)
+library(gridExtra)
+#library(readxl)
+require(vctrs)
+
+
+# Load dist data ##
+outdists <<- as.data.frame(read_excel("Data/outdists.xlsx"))
+#outdists<<-outdists[outdists$Working==TRUE,]
+
+# Numbers of parameters
+outdists$noPar<-as.numeric(!is.na(outdists$mu.start))+as.numeric(!is.na(outdists$sigma.start))+
+  as.numeric(!is.na(outdists$nu.start))+as.numeric(!is.na(outdists$tau.start))+
+  as.numeric(!is.na(outdists$N.start))+as.numeric(!is.na(outdists$Ltrunc.start))
+
+# Load slider names
+SliderGroup<-c("mu.no","sigma.no","nu.no","tau.no","N.no","LTrunc.no","RTrunc.no")
+
+
+# Define UI for application that draws a histogram ####
+ui <- fluidPage(
+  
+  # Application title
+  titlePanel("Demonstrations of gamlss - gamlss.shiny.prototype"),
+  
+  # Sidebar with a slider input for number of bins 
+  tabsetPanel(type = "tabs",
+              tabPanel("Gamlss family distributions",
+                       sidebarLayout(
+                         sidebarPanel(radioButtons(inputId = "inputTypeDist", 
+                                                   label="Type of distribution", choices=c("All",
+                                                                                           "Continuous",
+                                                                                           "Discrete",
+                                                                                           "Mixed"), 
+                                                   selected="All",inline = T),
+                                      radioButtons(inputId = "inputNoParDists", 
+                                                   label="Number of parameters", choices=c("Any",
+                                                                                           "1",
+                                                                                           "2",
+                                                                                           "3",
+                                                                                           "4"),
+                                                   selected="Any",inline = T),
+                                      radioButtons(inputId = "inputGgplot", 
+                                                   label="Enable ggplot", choices=c("No", "Yes"),                                                   
+                                                   selected="No",inline = T),
+
+                                      
+                                      uiOutput("selectInputs"),
+                                      # Create a uiOutput to hold the sliders
+                                      uiOutput("sliders")#,
+                                     # uiOutput("sliders_type1")
+                                      
+                         ),
+                         
+                         # Show a plot of the generated distribution
+                         mainPanel(
+                           plotOutput("distPlot"),
+                           plotOutput("distPlot2")#,
+                           #tableOutput('dist.temp')
+                         )
+                       )),
+              tabPanel("Local polynomial smoothing",
+                       sidebarLayout(
+                         sidebarPanel(selectInput(inputId = "localpoly", 
+                                                   label="Type of local polynomial", choices=c("demo.Lmean",
+                                                                                           "demo.WLocmean",
+                                                                                           "demo.Locpoly",
+                                                                                           "demo.WLocpoly",
+                                                                                           "demo.LocalRegression"), 
+                                                   selected="demo.Lmean"),
+                                      sliderInput(inputId = "span", label = "Span", min=0.01, max=2, value=0.5),
+                                      sliderInput(inputId = "deg", label = "deg", min=0, max=4, value=1),
+                                      sliderInput(inputId = "order", label = "order", min=1, max=4, value=1,step=1),
+                                      sliderInput(inputId = "lambda", label = "lambda", min=-6, max=6, value=0),
+                                      sliderInput(inputId = "position", label = "position", min=1, max=100, value=49)
+                                      ),
+                         mainPanel(plotOutput("LocalPolyPlot")
+                         )
+                       )
+              ),
+              tabPanel("Smoothing techniques",
+                       sidebarLayout(
+                         sidebarPanel(selectInput(inputId = "smoother", 
+                                                  label="Type of smoothing technique", choices=c("demo.BSplines",
+                                                                                              "demo.Randomwalk",
+                                                                                              "demo.histSmo",
+                                                                                              "demo.interpolateSmo",
+                                                                                              "demo.PSplines"), 
+                                                  selected="demo.histSmo"),
+                                      sliderInput(inputId = "lla", label = "lla", min=-2, max=10, value=0.01),
+                                      sliderInput(inputId = "order", label = "Order", min=1, max=4, value=1,step=1),
+                                      sliderInput(inputId = "nseg", label = "nseg", min=3, max=10, value=0.01),
+                                      sliderInput(inputId = "bdeg", label = "bdeg", min=1, max=4, value=1,step=1)
+                                      
+                         ),
+                         mainPanel(plotOutput("SmoothPlot")
+                         )
+                       )
+              ),
+              tabPanel("Example of live fitting",
+                       sidebarLayout(
+                         sidebarPanel(selectInput(inputId = 'dists.clean', 
+                                                  choices=outdists$dists.func.clean,
+                                                  label = 'Distributions', selected = "NO")
+                                      
+                         ),
+                         mainPanel(plotOutput("HistFitPlot")
+                         )
+                       )
+              )
+  )
+)
+
+
+# Define server logic required to draw a histogram ####
+server <- shinyServer(function(input, output) {
+
+  
+  
+  path<-getwd()
+  # GDPR and consent
+  # showModal(modalDialog(
+  #    title = "Important message",
+  #    easyClose = FALSE,
+  #    p(tags$strong("In accordance with Data Protection legislation, we would like to inform you of the following before you use our website:
+  #                                 "), "We collect your usage data within the MetaInsight app to perform analytics of usage and improve our app. By clicking",
+  #      tags$i(tags$u("I consent")), "below, you consent to the use of data by us through Google Analytics.
+  #          For details of policy, please check the 'Privacy notice' tab within the app, and ",tags$a(href="https://policies.google.com/privacy?hl=en", "Google Privacy & Terms.",target="_blank") ),
+  #    br(),
+  #    modalButton("I consent"),
+  #    footer = NULL
+  #  ))
+  
+  
+  
+  #  sliderInput("mu.no", "Mean:",
+  #              min = -2, max = 2, 
+  ##              value = 0,step = 0.1),
+  ##  sliderInput("sigma.no", "Sigma :",
+  #              min = 0.1, max = 5, 
+  #              value = 0.1),
+  
+  
+  
+#  observeEvent(input$add, {
+#    insertUI(
+#      selector = "#add",
+#      where = "afterEnd",
+#      ui = textInput(paste0("txt", input$add),"Insert some text")
+#    )
+#  })
+  
+
+  #  dist.temp <- reactive({
+  #    temp.func<-dists.all$dists.func[which(dists.all$dists==input$dist)]
+  #    return(temp.func)
+  #   })
+  
+
+  
+# Single distribution graphs   ######
+  dist.re<-reactive({
+    if(input$inputGgplot=="No"){
+      source(file = paste0(path,"/shiny.gamlss.dists/",input$dist,".R"), local = TRUE)
+    }else{
+      source(file = paste0(path,"/ggplot.shiny.gamlss.dists/",input$dist,".ggplot.R"), local = TRUE)
+    }
+      
+    
+  })
+  
+  output$distPlot <- renderPlot({
+    dist.re()
+  })
+  
+
+  
+  output$selectInputs <- renderUI({
+    if(input$inputTypeDist=="Continuous"){
+      input_choices_dists<-outdists[outdists$dists.type.char=="Continuous Distribution",]$dists.func; selected_dist<-"demo.NO"
+    }
+    if(input$inputTypeDist=="Discrete"){
+      input_choices_dists<-outdists[outdists$dists.type.char=="Discrete Distribution",]$dists.func; selected_dist<-"demo.BI"
+    }
+    if(input$inputTypeDist=="Mixed"){
+      input_choices_dists<-outdists[outdists$dists.type.char=="Mixed Distribution",]$dists.func; selected_dist<-"demo.ZAGA"
+    }
+    if(input$inputTypeDist=="All"){
+      input_choices_dists<-outdists$dists.func; selected_dist<-"demo.NO"
+    }
+    
+    if(input$inputNoParDists=="Any"){
+      input_NoPar_Dists<-c(1,2,3,4)
+    }else{
+      input_NoPar_Dists<-input$inputNoParDists
+    }
+      
+    input_choices_dists<-outdists$dists.func[outdists$noPar %in% input_NoPar_Dists & outdists$dists.func %in% input_choices_dists]
+    
+    selectInput(inputId = 'dist', choices=input_choices_dists, label = 'Pick a distribution', selected = selected_dist)
+    
+
+  })
+  
+  
+
+  
+  
+  #Render the sliders - mu, sigma, tau, nu, N, Trunc ####
+  output$sliders <- renderUI({
+    
+    d.details<-outdists[outdists$dists.func==input$dist,]
+    
+    SliderGroup.index<-which(c(!is.na(d.details$mu.start),
+                               !is.na(d.details$sigma.start),
+                               !is.na(d.details$nu.start),
+                               !is.na(d.details$tau.start),
+                               !is.na(d.details$N.start),
+                               !is.na(d.details$Ltrunc.start),
+                               !is.na(d.details$Rtrunc.start)
+                               ))
+    mu.input<-d.details[grepl("mu", colnames(d.details))]
+    sigma.input<-d.details[grepl("sigma", colnames(d.details))]
+    nu.input<-d.details[grepl("nu", colnames(d.details))]
+    tau.input<-d.details[grepl("tau", colnames(d.details))]
+    N.input<-d.details[grepl("N", colnames(d.details))]
+    Ltrunc.input<-d.details[grepl("Ltrunc", colnames(d.details))]
+    Rtrunc.input<-d.details[grepl("Rtrunc", colnames(d.details))]
+    #N.input<-list(c(1,50,N.input[[1]]))
+    #Trunc.input<-d.details[grepl("trun", colnames(d.details))]
+    values.matrix<-list(mu.input,sigma.input,nu.input,
+                        tau.input,N.input,Ltrunc.input,Rtrunc.input)
+    
+    # First, create a list of sliders each with a different name 
+    sliders <- lapply(SliderGroup.index, function(i) {
+      
+      inputName <<- SliderGroup[i]
+      inputmin <<- as.numeric(values.matrix[[i]][[1]])
+      inputmax <<- as.numeric(values.matrix[[i]][[2]])
+      inputvalue <<- as.numeric(values.matrix[[i]][[3]])
+      sliderInput(inputId = inputName, label = inputName, min=inputmin, max=inputmax, value=inputvalue,step = 0.01)
+    })
+    
+    # Create a tagList of sliders (this is important)
+    do.call(tagList, sliders)
+  })
+  
+
+  smooth.re<-reactive({
+    source(file = paste0(path,"/smoothing/",input$smoother,".R"), local = TRUE)
+    
+    
+  })
+  
+  output$SmoothPlot <- renderPlot({
+    smooth.re()
+  })
+  
+  
+  Lpoly.re<-reactive({
+    source(file = paste0(path,"/local.poly/",input$localpoly,".R"), local = TRUE)
+    
+    
+  })
+  
+  output$LocalPolyPlot <- renderPlot({
+    Lpoly.re()
+  })
+  
+  
+  
+  # Histogram Fitting example plot #####
+  output$HistFitPlot <- renderPlot({
+    data(abdom)
+    histDist(y,family=input$dists.clean, data=abdom,ylim = c(0,0.005)) # 
+  })
+  
+})
+
+# Run the application 
+shinyApp(ui = ui, server = server)

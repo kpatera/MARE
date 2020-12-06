@@ -1,0 +1,336 @@
+library(shiny)
+require(R2jags)
+require(PriorGen)
+source("functions/findbeta2.R")
+source("functions/findbetaqq2.R")
+source("functions/findbetamupsi2.R")
+
+ui <- fluidPage(
+  titlePanel("IWA : Interactive Web Application for Bayesian Hierarchical true prevalence estimation"),
+  tabsetPanel(type = "tabs",
+              tabPanel("IWA",
+                       fluidPage(
+                         fluidRow(column(6,img(src='iwa.png', align = "left"))),
+                         h1("The model is based on a hierarchical structure that provides the following estimates:"),
+                         br(),
+                         h3("(i) a",tags$strong(" comparison between animal-level apparent"), "and", tags$strong("true prevalence of infection/disease within each herd,")),
+                         h3("(ii) the ", tags$strong("true prevalence within each region,")),
+                         h3("(iii) the", tags$strong(" probability of freedom of disease/infection in each region,")),
+                         h3("(iv) the", tags$strong(" probability that the prevalence in each region is lower than a minimum acceptable threshold,")),
+                         h3("(v) the", tags$strong(" probability that the whole country is free from infection,")),
+                         h3("(vi) the", tags$strong(" probability that the prevalence within the country is lower than a minimum acceptable threshold.")),
+                         h1("Below the user can find a brief description of the package functions and options."),
+                         br(),
+                         h3("(a) In tab (Set up model) the use can set the model parameters."),
+                         h3("Next steps...")
+                       )
+              ),
+              
+              tabPanel("Set up model",
+                       sidebarLayout(
+                         sidebarPanel(radioButtons(inputId = "input4options", 
+                                                   label="Type of 4 options", choices=c("Option 1",
+                                                                                        "Option 2",
+                                                                                        "Option 3",
+                                                                                        "Option 4"), 
+                                                   selected="Option 1",inline = T),
+                                      radioButtons(inputId = "inputYesNo", 
+                                                   label="Type of Yes on No", choices=c("No",
+                                                                                        "Yes"), 
+                                                   selected="No",inline = T),
+                                      selectInput(inputId = 'slider1', choices=c("Choice1","Choice2",
+                                                                                 "Choice3","Choice4",
+                                                                                 "Choice5"), 
+                                                  label = 'Pick a choice', selected = "Choice1"),
+                                      verbatimTextOutput("info1"),
+                                      verbatimTextOutput("info2"),
+                                      verbatimTextOutput("info3"),
+                                      verbatimTextOutput("info4")
+                         ),
+                         mainPanel(splitLayout(cellWidths = c("50%", "50%"),
+                                               plotOutput("plot1", click = "plot_click1"), 
+                                               plotOutput("plot2", click = "plot_click2")),
+                                   splitLayout(cellWidths = c("50%", "50%"), 
+                                               plotOutput("plot3", click = "plot_click3"), 
+                                               plotOutput("plot4", click = "plot_click4")),
+                         )
+                       )
+              ),
+              tabPanel("PriorGen",
+                       tabsetPanel(
+                         tabPanel("Find beta",
+                                  sidebarPanel(
+                                    sliderInput(inputId = "PriorMedian", 
+                                                label = "Specify your prior beleif about the mean/median/mode: ", 
+                                                min=0, max=1, value=0.9,step = 0.01),
+                                    sliderInput(inputId = "Percentile1", 
+                                                label = " Specify the level of confidence that the true value of the median/mean/mode is greater or lower than the percentile.value: ",
+                                                min=0, max=1, value=0.95,step = 0.01),
+                                    sliderInput(inputId = "PercentileValue1", 
+                                                label = "Specify the upper or lower limit for the mean/median/mode at the specified level of confidence: ", 
+                                                min=0, max=1, value=0.80,step = 0.01),
+                                    radioButtons(inputId = "lower.value", 
+                                                 label="Is the percentile  the upper limit of the mean?", choices=c("TRUE","FALSE"), 
+                                                 selected="FALSE",inline = T)),
+                                  mainPanel(plotOutput("PriorGenPlot1")),
+                         ),
+                         tabPanel("Find betamupsi",
+                                  sidebarPanel(
+                                    sliderInput(inputId = "PriorMean", 
+                                                label = "Specify your prior beleif about the mean: ", 
+                                                min=0, max=1, value=0.2,step = 0.01),
+                                    sliderInput(inputId = "Percentile2", 
+                                                label = " Specify the level of confidence that the true value of the mean is greater or lower than the percentile.value: ",
+                                                min=0, max=1, value=0.99,step = 0.01),
+                                    sliderInput(inputId = "PercentileValue2", 
+                                                label = "Specify the upper or lower limit for the mean/median/mode at the specified level of confidence: ", 
+                                                min=0, max=1, value=0.30,step = 0.01),
+                                    radioButtons(inputId = "lower.value", 
+                                                 label="Is the percentile  the upper limit of the mean?", choices=c("TRUE","FALSE"), 
+                                                 selected="TRUE",inline = T),
+                                    sliderInput(inputId = "PercentilePsi", 
+                                                label = ".... ", 
+                                                min=0, max=1, value=0.90,step = 0.01),
+                                    sliderInput(inputId = "PercentileMedian", 
+                                                label = "....", 
+                                                min=0, max=1, value=0.50,step = 0.01),
+                                    sliderInput(inputId = "Percentile95value", 
+                                                label = "....", 
+                                                min=0, max=1, value=0.60,step = 0.01)),
+                                  mainPanel(plotOutput("PriorGenPlot2")),
+                         ),
+                         tabPanel("Find betaqq",
+                                  sidebarPanel(
+                                  sliderInput(inputId = "PercentileValue3_1", 
+                                              label = "Specify your prior beleif about the mean/median/mode: ", 
+                                              min=0, max=1, value=0.3,step = 0.01),
+                                  sliderInput(inputId = "Percentile3_1", 
+                                              label = " Specify the level of confidence that the true value of the median/mean/mode is greater or lower than the percentile.value: ",
+                                              min=0, max=1, value=0.3,step = 0.01),
+                                  sliderInput(inputId = "PercentileValue3_2", 
+                                              label = "Specify the upper or lower limit for the mean/median/mode at the specified level of confidence: ", 
+                                              min=0, max=1, value=0.6,step = 0.01),
+                                  sliderInput(inputId = "Percentile3_2", 
+                                               label="Is the percentile  the upper limit of the mean?",
+                                               min=0, max=1, value=0.8,step = 0.01)),
+                                  mainPanel(plotOutput("PriorGenPlot3")),
+                                  
+                         )
+                       )),
+              tabPanel("Online report",
+                       numericInput("obsY", "Y:", 1, min = 1, max = 1000000),
+                       verbatimTextOutput("valueY")
+              ),
+              
+              tabPanel("Acknowledgments",
+                       fluidPage(
+                         fluidRow(column(6,p("IWA was created using R Shiny and JAGS to implement the full hierarchical model for prevalence estimation."))),
+                         fluidRow(column(6,img(src='hotline.png', align = "left")))
+                       )       
+                       
+              )
+  )
+  
+)
+
+
+
+
+server <- shinyServer(function(input, output) {
+  
+  
+  showModal(modalDialog(
+    title = "Important message",
+    easyClose = FALSE,
+    p("This tool aims at estimating the true prevalence based on the apparent prevalence of infection obtained from your sampling and adjusting for the diagnostic accuracy of the tests used.",
+      tags$strong("
+    Following Data Protection legislations, we would like to inform you before you use our web application that :"), "We collect data regardingn your app usage within the IWA app to conduct analysis of usage and develope the application further. By clicking",
+      tags$i(tags$u("I consent")), "you consent to us utilizing the data via Google Analytics.
+          We refer interested users to our policy by clicking the 'Privacy notice' tab from within the app, and also ",tags$a(href="https://policies.google.com/privacy?hl=en", "Google Privacy & Terms.",target="_blank") ),
+    br(),
+    modalButton("I consent"),
+    footer = NULL
+  ))
+  
+  output$valueY <- renderText({ input$obsY })
+  
+  output$valueN <- renderText({ input$obsN })
+  
+  
+  dataN<-reactive({input$obsN})
+  dataY<-reactive({input$obsY})
+  
+  
+  
+  output$PriorGenPlot1 <- renderPlot({
+    # find beta based on prior knowledge
+    fb<-findbeta2(themedian=input$PriorMedian, percentile=input$Percentile1,lower.v=input$lower.value, percentile.value=input$PercentileValue1)
+    x<-seq(0,1,length.out = 2000)
+    plot(x,dbeta(x = x,shape1 = fb$a,shape2 = fb$b),type = "l")
+  })
+  
+  output$PriorGenPlot2 <- renderPlot({
+    # find beta and gamma
+    #fb2<-findbetamupsi2(themean=0.20, percentile=0.99, lower.v=TRUE,percentile.value=0.30, psi.percentile=0.90,percentile.median=0.50, percentile95value=0.60)
+    fb2<-findbetamupsi2(themean=input$PriorMean, percentile=input$Percentile2, 
+                        lower.v=input$lower.value,percentile.value=input$PercentileValue1, 
+                        psi.percentile=input$PercentilePsi, percentile.median=input$PercentileMedian,
+                        percentile95value=input$Percentile95value)    
+    x<-seq(0,1,length.out = 2000)
+    par(mfrow=c(1,2))
+    plot(x,dbeta(x = x,shape1 = fb2$abeta,shape2 = fb2$bbeta),type = "l")
+    plot(x,dgamma(x = x,shape = fb2$agamma, rate = fb2$bgamma),type = "l")
+  })
+  
+  output$PriorGenPlot3 <- renderPlot({
+    # Find alpha and beta of a beta dist based on percentiles
+    #fb3<-findbetaqq2(percentile.value1=0.30,percentile1=0.20,percentile.value2=0.60,percentile2=0.90)
+    fb3<-findbetaqq2(percentile.value1=input$PercentileValue3_1,percentile1=input$Percentile3_1,
+                     percentile.value2=input$PercentileValue3_2,percentile2=input$Percentile3_2)
+    
+    x<-seq(0,1,length.out = 2000)
+    plot(x,dbeta(x = x,shape1 = fb3$a,shape2 = fb3$b),type = "l")
+    
+  })
+  
+  cond=FALSE
+  if(cond==TRUE){
+    cat("model{
+    y ~ dbin(ap, n)
+    #Uniform (non-informative) prior for apparent prevalence (ap)
+    ap  ~ dbeta(1,1)
+  }", file=paste("ApparentPre.txt"))
+    
+    #data - list(n=4072, y=1210)
+    
+    #initials - list(p=0.1, Se=0.90, Sp=0.85)
+    
+    SaveParams <- c("ap")
+    nniter=5000; nnthin=2
+    Input_jags<-list(n=dataN , y=dataY)
+    jagsoutput_Appa<-jags(data=list(n=10,y=1),inits=NULL, 
+                          parameters.to.save=SaveParams, n.chains=2, 
+                          n.iter=nniter, n.thin=nnthin, 
+                          n.burnin=floor(nniter/6),
+                          model.file=paste("ApparentPre.txt"))
+    
+    
+    cat("model{
+    y ~ dbin(ap, n)
+    #Uniform (non-informative) prior for true prevalence (tp)
+    ap<-p*Se+(1-p)*(1-Sp)
+    p <- z * pstar
+    z ~ dbern(tau0)
+    pequal0 <- equals(p, 0)    #Informative priors on Se and Sp
+    Se ~ dbeta(22.5, 10.22) ## Mode=0.70, 95% sure Se > 0.55
+    Sp ~ dbeta(88.28, 1.882) ## Mode=0.99, 95% sure Sp > 0.95
+    pstar ~ dbeta(1.80, 26.74) ## Mode=0.03, 95% sure pistar < 0.15
+  }", file=paste("TruezeroPre.txt"))
+    
+    #data - list(n=4072, y=1210)
+    
+    #initials - list(p=0.1, Se=0.90, Sp=0.85)
+    
+    SaveParams <- c("p")
+    nniter=5000; nnthin=2
+    Input_jags<-list(n=dataN , y=dataY)
+    jagsoutput_Truezero<-jags(data=list(n=10,y=1),inits=NULL, 
+                              parameters.to.save=SaveParams, n.chains=2, 
+                              n.iter=nniter, n.thin=nnthin, 
+                              n.burnin=floor(nniter/6),
+                              model.file=paste("TruezeroPre.txt"))
+    
+    
+    
+    cat("model{
+for(i in 1:k){
+y[i] ~ dbin(ap[i], n)
+ap[i] <- p[i]*Se + (1-p[i])*(1-Sp)
+p[i] <- z[i] * pstar[i]
+z[i] ~ dbern(tau0)
+
+#informative hyperpior for prevalence
+pstar[i] ~ dbeta(alpha,beta)
+}
+alpha <- mu*psi
+beta <- psi*(1-mu)
+mu ~ dbeta(3.283, 17.744) ## Mode=0.12, 95% sure < 0.30
+psi ~ dgamma(4.524, 0.387) ## Uses Median of 95th percentile of prevalence
+
+#informative prior for Se and Sp
+Se ~ dbeta(58.8, 174.5) ## Mode=0.25; 95% sure < 0.30
+Sp ~ dbeta(272.4, 6.5) ## Mode=0.98, 95% sure > 0.96
+
+#informative prior for the probability of zero between group/herd prevalence
+tau0 ~ dbeta(4.8, 3.6) ## Mode=0.60, 95% sure < 0.827
+
+#predictions
+z.rep ~ dbern(tau0)
+pstar.rep ~ dbeta(alpha,beta)
+p.rep <- z.rep*pstar.rep
+pequal0 <- equals(p.rep,0)
+plessthan0.05 <- step(0.05-p.rep)
+}", file=paste("TruezeroPreMultiple.txt"))
+    
+    #data - list(k=35, n=70, y=c(2,0,3,0,1,2,2,3,6,0,8,1,13,2,1,3,1,7,2,2,0,4,1,4,2,6,1,4,0,6,4,2,0,12,33))
+    
+    #initials - list(Se=0.25, Sp=0.98, mu=0.12, psi=11.69, tau0=0.60, pstar=c(rep(0.05,35)), z=c(rep(1,35), z.rep=0, pstar.rep=0.05))  
+    
+    SaveParams <- c("p")
+    nniter=5000; nnthin=2
+    Input_jags<-list(n=dataN , y=dataY)
+    jagsoutput_TruezeroMult<-jags(data=list(n=10,y=1),inits=NULL, 
+                                  parameters.to.save=SaveParams, n.chains=2, 
+                                  n.iter=nniter, n.thin=nnthin, 
+                                  n.burnin=floor(nniter/6),
+                                  model.file=paste("TruezeroPreMultiple.txt"))
+    
+  }  
+  
+  output$plot1 <- renderPlot({
+    plot(1,xlim = c(0,1),ylim = c(0,1),type = "n",
+         ylab = "Sensitivy",xlab="Specificity",
+         main = "Apparent Prevelance")
+  },width = 400,height=400)
+  
+  output$plot2 <- renderPlot({
+    plot(1,xlim = c(0,1),ylim = c(0,1),type = "n",
+         ylab = "Sensitivy",xlab="Specificity",
+         main = "True Prevelance")
+  },width = 400,height=400)
+  
+  output$plot3 <- renderPlot({
+    plot(1,xlim = c(0,1),ylim = c(0,1),type = "n",
+         ylab = "Sensitivy",xlab="Specificity",
+         main = "Apparent Prevelance")
+  },width = 400,height=400)
+  
+  output$plot4 <- renderPlot({
+    plot(1,xlim = c(0,1),ylim = c(0,1),type = "n",
+         ylab = "Sensitivy",xlab="Specificity",
+         main = "True Prevelance")
+  },width = 400,height=400)
+  
+  
+  
+  
+  output$info1 <- renderText({
+    paste0("Sensitivity=", round(max(min(1,input$plot_click1$x,na.rm = T)),3), 
+           "\nSpecificity=", round(max(0,min(1,input$plot_click1$y,na.rm = T)),3))
+  })
+  output$info2 <- renderText({
+    paste0("Sensitivity=", round(max(min(1,input$plot_click2$x,na.rm = T)),3), 
+           "\nSpecificity=", round(max(0,min(1,input$plot_click2$y,na.rm = T)),3))
+  })
+  output$info3 <- renderText({
+    paste0("Sensitivity=", round(max(min(1,input$plot_click3$x,na.rm = T)),3), 
+           "\nSpecificity=", round(max(0,min(1,input$plot_click3$y,na.rm = T)),3))
+  })
+  output$info4 <- renderText({
+    paste0("Sensitivity=", round(max(min(1,input$plot_click4$x,na.rm = T)),3), 
+           "\nSpecificity=", round(max(0,min(1,input$plot_click4$y,na.rm = T)),3))
+  })
+  
+})
+# Run the application 
+shinyApp(ui = ui, server = server)

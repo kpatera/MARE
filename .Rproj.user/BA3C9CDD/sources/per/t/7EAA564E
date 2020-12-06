@@ -1,0 +1,24 @@
+{
+    "id": "7EAA564E",
+    "path": "~/GitHub/MARE/MARE/server.R",
+    "project_path": "MARE/server.R",
+    "type": "r_source",
+    "hash": "2273689283",
+    "contents": "",
+    "dirty": false,
+    "created": 1607279341250.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "cursorPosition": "109,15",
+        "scrollLine": "92"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1607298135,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1607298135991,
+    "read_only": false,
+    "read_only_alternatives": []
+}
