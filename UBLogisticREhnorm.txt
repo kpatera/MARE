@@ -1,0 +1,18 @@
+model
+      {
+        for( i in 1 : Nstud ) {
+          rA[i] ~ dbin(pA[i], nA[i])
+          rB[i] ~ dbin(pB[i], nB[i])
+          mu[i] ~ dnorm(lmean,pControl)
+          logit(pB[i]) <- mu[i] + 0.5*delta[i]
+          logit(pA[i]) <- mu[i] - 0.5*delta[i]
+          delta[i] ~ dnorm(d, prec)
+        }
+        OR <- log(d)
+        d ~ dnorm(0.0,pControl)
+        lv ~ dunif(logalpha,logbeta)
+        log(tau.sq)<-lv
+        prec<-1/(tau.sq)
+        tau<-sqrt(tau.sq)
+        d.new ~dnorm(d,prec)
+      }

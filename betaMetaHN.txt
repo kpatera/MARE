@@ -1,0 +1,17 @@
+model
+{
+      for( i in 1 : Nstud ) { # Likelihood
+      rA[i] ~ dbin(pA[i], nA[i]) # rA follows a binomial
+      rB[i] ~ dbin(pB[i], nB[i])
+      logit(pA[i]) <- mu[i]
+      logit(pB[i]) <- mu[i] + delta[i]
+      mu[i] ~ dnorm(lmean,prec.theta)
+      delta[i] ~ dnorm(d, prec)
+      }
+      OR <- exp(d)
+      d ~ dnorm(0.0,prec.theta)
+      tau~dnorm(0.0,prec.tau)I(0,)
+      tau.sq<-tau*tau
+      prec<-1/(tau.sq)
+      d.new ~dnorm(d,prec)
+}

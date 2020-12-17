@@ -1,0 +1,17 @@
+model
+{
+      for( i in 1 : Nstud ) { # Likelihood
+      rA[i] ~ dbin(pA[i], nA[i]) # rA follows a binomial
+      rB[i] ~ dbin(pB[i], nB[i])
+      logit(pA[i]) <- mu[i]
+      logit(pB[i]) <- mu[i] + delta[i]
+      mu[i] ~ dnorm(0.0,1.0E-1)
+      delta[i] ~ dnorm(d, prec)
+      }
+      d ~ dnorm(0.0,1.0E-1) # Vague prior on logOR
+      OR <- exp(d) # Odds ratio
+      lv ~ dunif(-10,10)
+      log(tau.sq)<-lv
+      prec<-1/(tau.sq)
+      tau<-sqrt(tau.sq)
+}
