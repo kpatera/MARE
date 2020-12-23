@@ -37,9 +37,6 @@ jagsoutput3<-jags.model(data=blockerDat,inits=NULL, n.chains=1,
 
 #   update(jagsoutput0, n.iter=nniter, n.thin=nnthin, n.burnin=floor(nniter/6), progress.bar="none")
 
-params  <- c("precS","betaS","slog","sSSquared")
-
-
 samples <<- coda.samples(jagsoutput3,  n.iter=nniter, n.thin=nnthin, n.burnin=floor(nniter/10),
                          variable.names=blocker2Params)
 
